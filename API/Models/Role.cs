@@ -9,6 +9,6 @@ namespace API.Models
         public string Name { get; set; }
 
         //Cardinality
-        public ICollection<AccountRole> AccountRoles { get; set; }
+        public ICollection<AccountRole>? AccountRoles { get; set; }
     }
 }
