@@ -1,5 +1,8 @@
 ﻿using API.Contracts;
 using API.Models;
+using API.Repositories;
+using API.ViewModels.Educations;
+using API.ViewModels.Universities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
@@ -9,9 +12,11 @@ namespace API.Controllers;
 public class EducationController : ControllerBase
 {
     private readonly IEducationRepository _educationRepository;
-    public EducationController(IEducationRepository education)
+    private readonly IMapper<Education, EducationVM> _mapper;
+    public EducationController(IEducationRepository education, IMapper<Education, EducationVM> mapper)
     {
         _educationRepository = education;
+        _mapper = mapper;
     }
 
     [HttpGet]
@@ -23,7 +28,9 @@ public class EducationController : ControllerBase
             return NotFound();
         }
 
-        return Ok(educations);
+        var resultConverted = educations.Select(_mapper.Map).ToList();
+
+        return Ok(resultConverted);
     }
 
     [HttpGet("{guid}")]
@@ -35,13 +42,17 @@ public class EducationController : ControllerBase
             return NotFound();
         }
 
-        return Ok(education);
+        var resultConverted = _mapper.Map(education);
+
+        return Ok(resultConverted);
     }
 
     [HttpPost]
-    public IActionResult Create(Education education)
+    public IActionResult Create(EducationVM educationVM)
     {
-        var result = _educationRepository.Create(education);
+        var educationConverted = _mapper.Map(educationVM);
+
+        var result = _educationRepository.Create(educationConverted);
         if (result is null)
         {
             return BadRequest();
@@ -51,9 +62,10 @@ public class EducationController : ControllerBase
     }
 
     [HttpPut]
-    public IActionResult Update(Education education)
+    public IActionResult Update(EducationVM educationVM)
     {
-        var isUpdated = _educationRepository.Update(education);
+        var educationConverted = _mapper.Map(educationVM);
+        var isUpdated = _educationRepository.Update(educationConverted);
         if (!isUpdated)
         {
             return BadRequest();

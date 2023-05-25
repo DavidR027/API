@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using API.ViewModels.Universities;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace API.Models
 {
@@ -12,5 +13,6 @@ namespace API.Models
 
         //Cardinality
         public ICollection<Education>? Educations { get; set; }
+
     }
 }

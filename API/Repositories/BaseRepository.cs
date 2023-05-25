@@ -5,10 +5,10 @@ using System.Data;
 
 namespace API.Repositories;
 
-public class BaseRepository<T> where T : class
+public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : class
 {
 
-    private readonly BookingManagementDbContext _context;
+    protected readonly BookingManagementDbContext _context;
 
     public BaseRepository(BookingManagementDbContext context)
     {
@@ -22,13 +22,16 @@ public class BaseRepository<T> where T : class
      * <param name="param">Entity object</param>
      * <returns>Entity object</returns>
      */
-    public T Create(T param)
+    public TEntity? Create(TEntity entity)
     {
         try
         {
-            _context.Set<T>().Add(param);
+            typeof(TEntity).GetProperty("CreatedDate")!.SetValue(entity, DateTime.Now);
+            typeof(TEntity).GetProperty("ModifiedDate")!.SetValue(entity, DateTime.Now);
+
+            _context.Set<TEntity>().Add(entity);
             _context.SaveChanges();
-            return param;
+            return entity;
         }
         catch
         {
@@ -44,11 +47,23 @@ public class BaseRepository<T> where T : class
     * <returns>true if data updated</returns>
     * <returns>false if data not updated</returns>
     */
-    public bool Update(T param)
+    public bool Update(TEntity entity)
     {
         try
         {
-            _context.Set<T>().Update(param);
+            var guid = (Guid)typeof(TEntity).GetProperty("Guid")!.GetValue(entity)!;
+
+            var oldEntity = GetByGuid(guid);
+            if (oldEntity == null)
+            {
+                return false;
+            }
+
+            var getCreatedDate = typeof(TEntity).GetProperty("CreatedDate")!.GetValue(oldEntity)!;    
+
+            typeof(TEntity).GetProperty("CreatedDate")!.SetValue(entity, getCreatedDate);
+            typeof(TEntity).GetProperty("ModifiedDate")!.SetValue(entity, DateTime.Now);
+            _context.Set<TEntity>().Update(entity);
             _context.SaveChanges();
             return true;
         }
@@ -71,13 +86,13 @@ public class BaseRepository<T> where T : class
     {
         try
         {
-            var param = GetByGuid(guid);
-            if (param == null)
+            var entity = GetByGuid(guid);
+            if (entity == null)
             {
                 return false;
             }
 
-            _context.Set<T>().Remove(param);
+            _context.Set<TEntity>().Remove(entity);
             _context.SaveChanges();
             return true;
         }
@@ -94,9 +109,9 @@ public class BaseRepository<T> where T : class
      * <returns>List of entities</returns>
      * <returns>Empty list if no data found</returns>
      */
-    public IEnumerable<T> GetAll()
+    public IEnumerable<TEntity> GetAll()
     {
-        return _context.Set<T>().ToList();
+        return _context.Set<TEntity>().ToList();
     }
 
     /*
@@ -107,9 +122,11 @@ public class BaseRepository<T> where T : class
      * <returns>Entity object</returns>
      * <returns>null if no data found</returns>
      */
-    public T? GetByGuid(Guid guid)
+    public TEntity? GetByGuid(Guid guid)
     {
-        return _context.Set<T>().Find(guid);
+        var entity = _context.Set<TEntity>().Find(guid);
+        _context.ChangeTracker.Clear();
+        return entity;
     }
 
 }

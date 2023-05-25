@@ -1,6 +1,9 @@
 ﻿using API.Contracts;
 using API.Models;
+using API.ViewModels.Accounts;
+using API.ViewModels.Bookings;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Identity.Client;
 
 namespace API.Controllers;
 
@@ -9,9 +12,11 @@ namespace API.Controllers;
 public class BookingController : ControllerBase
 {
     private readonly IBookingRepository _bookingRepository;
-    public BookingController(IBookingRepository booking)
+    private readonly IMapper<Booking, BookingVM> _mapper;
+    public BookingController(IBookingRepository booking, IMapper<Booking, BookingVM> mapper)
     {
         _bookingRepository = booking;
+        _mapper = mapper;
     }
 
     [HttpGet]
@@ -23,7 +28,9 @@ public class BookingController : ControllerBase
             return NotFound();
         }
 
-        return Ok(bookings);
+        var resultConverted = bookings.Select(_mapper.Map).ToList();
+
+        return Ok(resultConverted);
     }
 
     [HttpGet("{guid}")]
@@ -35,13 +42,16 @@ public class BookingController : ControllerBase
             return NotFound();
         }
 
-        return Ok(booking);
+        var resultConverted = _mapper.Map(booking);
+
+        return Ok(resultConverted);
     }
 
     [HttpPost]
-    public IActionResult Create(Booking booking)
+    public IActionResult Create(BookingVM bookingVM)
     {
-        var result = _bookingRepository.Create(booking);
+        var BookingConverted = _mapper.Map(bookingVM);
+        var result = _bookingRepository.Create(BookingConverted);
         if (result is null)
         {
             return BadRequest();
@@ -51,9 +61,10 @@ public class BookingController : ControllerBase
     }
 
     [HttpPut]
-    public IActionResult Update(Booking booking)
+    public IActionResult Update(BookingVM bookingVM)
     {
-        var isUpdated = _bookingRepository.Update(booking);
+        var BookingConverted = _mapper.Map(bookingVM);
+        var isUpdated = _bookingRepository.Update(BookingConverted);
         if (!isUpdated)
         {
             return BadRequest();

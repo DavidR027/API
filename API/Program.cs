@@ -13,6 +13,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<BookingManagementDbContext>(options => options.UseSqlServer(connectionString));
 
+builder.Services.AddSingleton(typeof(IMapper<,>), typeof(Mapper<,>));
+
 // Add Repository to the container.
 builder.Services.AddScoped<IUniversityRepository, UniversityRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
