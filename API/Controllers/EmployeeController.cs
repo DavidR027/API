@@ -9,84 +9,74 @@ using System;
 using System.Net.Mail;
 using System.Net;
 using System.Runtime.CompilerServices;
+using API.ViewModels.Others;
 
 namespace API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class EmployeeController : ControllerBase
+public class EmployeeController : BaseController<Employee, EmployeeVM>
 {
     private readonly IEmployeeRepository _employeeRepository;
+    private readonly IEducationRepository _educationRepository;
+    private readonly IUniversityRepository _universityRepository;
     private readonly IMapper<Employee, EmployeeVM> _mapper;
-    public EmployeeController(IEmployeeRepository employeeRepository, IMapper<Employee, EmployeeVM> mapper)
+    public EmployeeController(IEmployeeRepository employeeRepository, IEducationRepository educationRepository,
+            IUniversityRepository universityRepository, IMapper<Employee, EmployeeVM> mapper) : base(employeeRepository, mapper)
     {
         _employeeRepository = employeeRepository;
+        _educationRepository = educationRepository;
+        _universityRepository = universityRepository;
         _mapper = mapper;
     }
 
-    [HttpGet]
-    public IActionResult GetAll()
+
+    [HttpGet("GetAllMasterEmployee")]
+    public IActionResult GetAllEmployee()
     {
-        var employees = _employeeRepository.GetAll();
-        if (!employees.Any())
+        var masterEmployees = _employeeRepository.GetAllMasterEmployee();
+        if (!masterEmployees.Any())
         {
-            return NotFound();
+            return NotFound(new ResponseVM<EmployeeVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "Get All Master Employee not Found",
+                Data = null
+            });
         }
 
-        var resultConverted = employees.Select(_mapper.Map).ToList();
-
-        return Ok(resultConverted);
+        return Ok(new ResponseVM<IEnumerable<MasterEmployeeVM>>
+        {
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Success",
+            Data = masterEmployees
+        });
     }
 
-    [HttpGet("{guid}")]
-    public IActionResult GetByGuid(Guid guid)
+    [HttpGet("GetMasterEmployeeByGuid")]
+    public IActionResult GetMasterEmployeeByGuid(Guid guid)
     {
-        var employee = _employeeRepository.GetByGuid(guid);
-        if (employee is null)
+        var masterEmployees = _employeeRepository.GetMasterEmployeeByGuid(guid);
+        if (masterEmployees is null)
         {
-            return NotFound();
+            return NotFound(new ResponseVM<EmployeeVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "Get Master Employee by Guid not Found",
+                Data = null
+            });
         }
 
-        var resultConverted = _mapper.Map(employee);
-
-        return Ok(resultConverted);
-    }
-
-    [HttpPost]
-    public IActionResult Create(EmployeeVM employeeVM)
-    {
-        var EmployeeConverted = _mapper.Map(employeeVM);
-        var result = _employeeRepository.Create(EmployeeConverted);
-        if (result is null)
+        return Ok(new ResponseVM<MasterEmployeeVM>
         {
-            return BadRequest();
-        }
-
-        return Ok(result);
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Success",
+            Data = masterEmployees
+        });
     }
 
-    [HttpPut]
-    public IActionResult Update(EmployeeVM employeeVM)
-    {
-        var EmployeeConverted = _mapper.Map(employeeVM);
-        var isUpdated = _employeeRepository.Update(EmployeeConverted);
-        if (!isUpdated)
-        {
-            return BadRequest();
-        }
-
-        return Ok();
-    }
-
-    [HttpDelete("{guid}")]
-    public IActionResult Delete(Guid guid)
-    {
-        var isDeleted = _employeeRepository.Delete(guid);
-        if (!isDeleted)
-        {
-            return BadRequest();
-        }
-
-        return Ok();
-    }
 }

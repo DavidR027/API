@@ -9,89 +9,124 @@ using Microsoft.Identity.Client;
 using System.Net.Mail;
 using System.Net;
 using API.Utility;
+using API.ViewModels.Login;
+using API.ViewModels.Universities;
+using API.ViewModels.Others;
+using System.Net.NetworkInformation;
+using API.ViewModels.AccountRoles;
 
 namespace API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AccountController : ControllerBase
+
+public class AccountController : BaseController<Account, AccountVM>
 {
     private readonly IAccountRepository _accountRepository;
     private readonly IEmployeeRepository _employeeRepository;
     private readonly IMapper<Account, AccountVM> _mapper;
-    public AccountController(IAccountRepository accountRepository, IEmployeeRepository employeeRepository, IMapper<Account, AccountVM> mapper)
+    private readonly IMapper<Account, ChangePasswordVM> _changePasswordMapper;
+    public AccountController(IAccountRepository accountRepository, IEmployeeRepository employeeRepository, IMapper<Account, AccountVM> mapper, IMapper<Account, ChangePasswordVM> changePasswordMapper) : base(accountRepository, mapper)
     {
         _accountRepository = accountRepository;
         _employeeRepository = employeeRepository;
         _mapper = mapper;
+        _changePasswordMapper = changePasswordMapper;
     }
 
-    [HttpGet]
-    public IActionResult GetAll()
+    //kel 3
+    [HttpPost("login")]
+    public IActionResult Login(LoginVM loginVM)
     {
-        var accounts = _accountRepository.GetAll();
-        if (!accounts.Any())
+        var account = _accountRepository.Login(loginVM);
+
+        if (account == null)
         {
-            return NotFound();
+            return NotFound(new ResponseVM<AccountVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "Account not found",
+                Data = null
+            });
         }
 
-        var resultConverted = accounts.Select(_mapper.Map).ToList();
-
-        return Ok(resultConverted);
-    }
-
-    [HttpGet("{guid}")]
-    public IActionResult GetByGuid(Guid guid)
-    {
-        var account = _accountRepository.GetByGuid(guid);
-        if (account is null)
+        if (account.Password != loginVM.Password)
         {
-            return NotFound();
+            return BadRequest(new ResponseVM<AccountVM>
+            {
+                Code = StatusCodes.Status400BadRequest,
+                Status = HttpStatusCode.BadRequest.ToString(),
+                Message = "Password Invalid",
+                Data = null
+            });
         }
 
-        var resultConverted = _mapper.Map(account);
+        return Ok(new ResponseVM<List<AccountVM>>
+        {
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Login Success",
+            Data = null
+        });
 
-        return Ok(resultConverted);
     }
 
-    [HttpPost]
-    public IActionResult Create(AccountVM accountVM)
+
+    //kel 2
+    [HttpPost("Register")]
+    public IActionResult Register(RegisterVM registerVM)
     {
-        var AccountConverted = _mapper.Map(accountVM);
-        var result = _accountRepository.Create(AccountConverted);
-        if (result is null)
+
+        var result = _accountRepository.Register(registerVM);
+        switch (result)
         {
-            return BadRequest();
+            case 0:
+                return BadRequest(new ResponseVM<AccountVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "Registration Failed",
+                    Data = null
+                });
+            case 1:
+                return BadRequest(new ResponseVM<AccountVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "Email already exists",
+                    Data = null
+                });
+            case 2:
+                return BadRequest(new ResponseVM<AccountVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "Phone number already exists",
+                    Data = null
+                });
+            case 3:
+                return Ok(new ResponseVM<AccountVM>
+                {
+                    Code = StatusCodes.Status200OK,
+                    Status = HttpStatusCode.OK.ToString(),
+                    Message = "Registration Success",
+                    Data = null
+                });
         }
 
-        return Ok(result);
-    }
-
-    [HttpPut]
-    public IActionResult Update(AccountVM accountVM)
-    {
-        var AccountConverted = _mapper.Map(accountVM);
-        var isUpdated = _accountRepository.Update(AccountConverted);
-        if (!isUpdated)
+        return BadRequest(new ResponseVM<AccountVM>
         {
-            return BadRequest();
-        }
+            Code = StatusCodes.Status400BadRequest,
+            Status = HttpStatusCode.BadRequest.ToString(),
+            Message = "Registration Failed",
+            Data = null
+        });
 
-        return Ok();
     }
 
-    [HttpDelete("{guid}")]
-    public IActionResult Delete(Guid guid)
-    {
-        var isDeleted = _accountRepository.Delete(guid);
-        if (!isDeleted)
-        {
-            return BadRequest();
-        }
 
-        return Ok();
-    }
-
+    //kel 5
     [HttpPost("ForgotPassword"+"{email}")]
     public IActionResult UpdateResetPass(String email)
     {
@@ -99,7 +134,13 @@ public class AccountController : ControllerBase
         var getGuid = _employeeRepository.FindGuidByEmail(email);
         if (getGuid == null)
         {
-            return NotFound("Akun tidak ditemukan");
+            return NotFound(new ResponseVM<AccountVM>
+        {
+            Code = StatusCodes.Status404NotFound,
+            Status = HttpStatusCode.NotFound.ToString(),
+            Message = "Email not Found",
+            Data = null
+        });
         }
 
         var isUpdated = _accountRepository.UpdateOTP(getGuid);
@@ -107,7 +148,13 @@ public class AccountController : ControllerBase
         switch (isUpdated)
         {
             case 0:
-                return BadRequest();
+                return BadRequest(new ResponseVM<AccountVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "OTP Failed to Generate",
+                    Data = null
+                });
             default:
                 var hasil = new AccountResetPasswordVM
                 {
@@ -122,10 +169,85 @@ public class AccountController : ControllerBase
                            .WithEmail(email)
                            .Send();
 
-                return Ok(hasil);
+                return Ok(new ResponseVM<AccountResetPasswordVM>
+                {
+                    Code = StatusCodes.Status200OK,
+                    Status = HttpStatusCode.OK.ToString(),
+                    Message = "OTP Successfully Generated",
+                    Data = hasil
+                });
 
         }
 
+
+    }
+
+    //kel 6
+    [HttpPost("ChangePassword")]
+    public IActionResult ChangePassword(ChangePasswordVM changePasswordVM)
+    {
+        // Cek apakah email dan OTP valid
+        var account = _employeeRepository.FindGuidByEmail(changePasswordVM.Email);
+        var changePass = _accountRepository.ChangePasswordAccount(account, changePasswordVM);
+        switch (changePass)
+        {
+            case 0:
+                return BadRequest(new ResponseVM<ChangePasswordVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "Unable to Change Password",
+                    Data = null
+                });
+            case 1:
+                return Ok(new ResponseVM<ChangePasswordVM>
+                {
+                    Code = StatusCodes.Status200OK,
+                    Status = HttpStatusCode.OK.ToString(),
+                    Message = "Password has been changed successfully",
+                    Data = null
+                });
+            case 2:
+                return BadRequest(new ResponseVM<ChangePasswordVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "Invalid OTP",
+                    Data = null
+                });
+            case 3:
+                return BadRequest(new ResponseVM<ChangePasswordVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "OTP has already been used",
+                    Data = null
+                });
+            case 4:
+                return BadRequest(new ResponseVM<ChangePasswordVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "OTP expired",
+                    Data = null
+                });
+            case 5:
+                return BadRequest(new ResponseVM<ChangePasswordVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "Wrong Password, Not the Same",
+                    Data = null
+                });
+            default:
+                return BadRequest(new ResponseVM<ChangePasswordVM>
+                {
+                    Code = StatusCodes.Status400BadRequest,
+                    Status = HttpStatusCode.BadRequest.ToString(),
+                    Message = "Unable to Change Password",
+                    Data = null
+                });
+        }
 
     }
 

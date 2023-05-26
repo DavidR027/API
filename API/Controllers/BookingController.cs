@@ -1,88 +1,121 @@
 ﻿using API.Contracts;
 using API.Models;
+using API.Repositories;
 using API.ViewModels.Accounts;
 using API.ViewModels.Bookings;
+using API.ViewModels.Others;
+using API.ViewModels.Universities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Client;
+using System.Net;
 
 namespace API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class BookingController : ControllerBase
+public class BookingController : BaseController<Booking, BookingVM>
 {
     private readonly IBookingRepository _bookingRepository;
     private readonly IMapper<Booking, BookingVM> _mapper;
-    public BookingController(IBookingRepository booking, IMapper<Booking, BookingVM> mapper)
+    public BookingController(IBookingRepository booking, IMapper<Booking, BookingVM> mapper) : base(booking, mapper)
     {
         _bookingRepository = booking;
         _mapper = mapper;
     }
 
-    [HttpGet]
-    public IActionResult GetAll()
+    //kel 4
+    [HttpGet("BookingDetail")]
+    public IActionResult GetAllBookingDetail()
     {
-        var bookings = _bookingRepository.GetAll();
-        if (!bookings.Any())
+        try
         {
-            return NotFound();
+            var bookingDetails = _bookingRepository.GetAllBookingDetail();
+
+            return Ok(new ResponseVM<IEnumerable<BookingDetailVM>>
+            {
+                Code = StatusCodes.Status200OK,
+                Status = HttpStatusCode.OK.ToString(),
+                Message = "success",
+                Data = bookingDetails
+            });
+
         }
-
-        var resultConverted = bookings.Select(_mapper.Map).ToList();
-
-        return Ok(resultConverted);
+        catch
+        {
+            return NotFound(new ResponseVM<BookingDetailVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "Booking Detail not Found",
+                Data = null
+            });
+        }
     }
 
-    [HttpGet("{guid}")]
-    public IActionResult GetByGuid(Guid guid)
+    //kel 4
+    [HttpGet("BookingDetail/{guid}")]
+    public IActionResult GetDetailByGuid(Guid guid)
     {
-        var booking = _bookingRepository.GetByGuid(guid);
-        if (booking is null)
+        try
         {
-            return NotFound();
+            var booking = _bookingRepository.GetBookingDetailByGuid(guid);
+            if (booking is null)
+            {
+
+                return NotFound(new ResponseVM<BookingDetailVM>
+                {
+                    Code = StatusCodes.Status404NotFound,
+                    Status = HttpStatusCode.NotFound.ToString(),
+                    Message = "Booking Detail not found",
+                    Data = null
+                });
+            }
+
+            return Ok(new ResponseVM<BookingDetailVM>
+            {
+                Code = StatusCodes.Status200OK,
+                Status = HttpStatusCode.OK.ToString(),
+                Message = "Success",
+                Data = booking
+            });
         }
-
-        var resultConverted = _mapper.Map(booking);
-
-        return Ok(resultConverted);
+        catch
+        {
+            return BadRequest(new ResponseVM<BookingVM>
+            {
+                Code = StatusCodes.Status400BadRequest,
+                Status = HttpStatusCode.BadRequest.ToString(),
+                Message = "Booking Detail Error",
+                Data = null
+            });
+        }
     }
 
-    [HttpPost]
-    public IActionResult Create(BookingVM bookingVM)
+
+    //kel 3
+    [HttpGet("bookingduration")]
+    public IActionResult GetDuration()
     {
-        var BookingConverted = _mapper.Map(bookingVM);
-        var result = _bookingRepository.Create(BookingConverted);
-        if (result is null)
+        var bookingLengths = _bookingRepository.GetBookingDuration();
+        if (!bookingLengths.Any())
         {
-            return BadRequest();
+            return NotFound(new ResponseVM<BookingDetailVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "Booking Duration not found",
+                Data = null
+            });
         }
 
-        return Ok(result);
-    }
-
-    [HttpPut]
-    public IActionResult Update(BookingVM bookingVM)
-    {
-        var BookingConverted = _mapper.Map(bookingVM);
-        var isUpdated = _bookingRepository.Update(BookingConverted);
-        if (!isUpdated)
+        return Ok(new ResponseVM<IEnumerable<BookingDurationVM>>
         {
-            return BadRequest();
-        }
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Success",
+            Data = bookingLengths
+        });
 
-        return Ok();
-    }
-
-    [HttpDelete("{guid}")]
-    public IActionResult Delete(Guid guid)
-    {
-        var isDeleted = _bookingRepository.Delete(guid);
-        if (!isDeleted)
-        {
-            return BadRequest();
-        }
-
-        return Ok();
     }
 }
 

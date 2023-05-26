@@ -2,12 +2,23 @@
 using API.Models;
 using API.ViewModels.AccountRoles;
 using API.ViewModels.Accounts;
+using API.ViewModels.Others;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 
 namespace API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+
+public class AccountRoleController : BaseController<AccountRole, AccountRoleVM>
+{
+    public AccountRoleController(IAccountRoleRepository accountRoleRepository, IMapper<AccountRole, AccountRoleVM> mapper)
+        : base(accountRoleRepository, mapper)
+    {
+    }
+}
+/*
 public class AccountRoleController : ControllerBase
 {
     private readonly IAccountRoleRepository _accountRoleRepository;
@@ -24,12 +35,24 @@ public class AccountRoleController : ControllerBase
         var accountRoles = _accountRoleRepository.GetAll();
         if (!accountRoles.Any())
         {
-            return NotFound();
+            return NotFound(new ResponseVM<AccountRoleVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "Data not found",
+                Data = null
+            });
         }
 
         var resultConverted = accountRoles.Select(_mapper.Map).ToList();
 
-        return Ok(resultConverted);
+        return Ok(new ResponseVM<List<AccountRoleVM>>
+        {
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Success",
+            Data = resultConverted
+        });
     }
 
     [HttpGet("{guid}")]
@@ -38,12 +61,24 @@ public class AccountRoleController : ControllerBase
         var accountRole = _accountRoleRepository.GetByGuid(guid);
         if (accountRole is null)
         {
-            return NotFound();
+            return NotFound(new ResponseVM<AccountRoleVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "Account Role not found",
+                Data = null
+            });
         }
 
         var resultConverted = _mapper.Map(accountRole);
 
-        return Ok(resultConverted);
+        return Ok(new ResponseVM<AccountRoleVM>
+        {
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Success",
+            Data = resultConverted
+        });
     }
 
     [HttpPost]
@@ -53,10 +88,22 @@ public class AccountRoleController : ControllerBase
         var result = _accountRoleRepository.Create(AccountConverted);
         if (result is null)
         {
-            return BadRequest();
+            return BadRequest(new ResponseVM<AccountRoleVM>
+            {
+                Code = StatusCodes.Status400BadRequest,
+                Status = HttpStatusCode.BadRequest.ToString(),
+                Message = "Create Failed",
+                Data = null
+            });
         }
 
-        return Ok(result);
+        return Ok(new ResponseVM<AccountRole>
+        {
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Create Success",
+            Data = result
+        });
     }
 
     [HttpPut]
@@ -66,10 +113,22 @@ public class AccountRoleController : ControllerBase
         var isUpdated = _accountRoleRepository.Update(AccountConverted);
         if (!isUpdated)
         {
-            return BadRequest();
+            return BadRequest(new ResponseVM<AccountRoleVM>
+            {
+                Code = StatusCodes.Status400BadRequest,
+                Status = HttpStatusCode.BadRequest.ToString(),
+                Message = "Update Failed",
+                Data = null
+            });
         }
 
-        return Ok();
+        return Ok(new ResponseVM<AccountRole>
+        {
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Update Success",
+            Data = null
+        });
     }
 
     [HttpDelete("{guid}")]
@@ -78,10 +137,22 @@ public class AccountRoleController : ControllerBase
         var isDeleted = _accountRoleRepository.Delete(guid);
         if (!isDeleted)
         {
-            return BadRequest();
+            return BadRequest(new ResponseVM<AccountRoleVM>
+            {
+                Code = StatusCodes.Status400BadRequest,
+                Status = HttpStatusCode.BadRequest.ToString(),
+                Message = "Delete Failed",
+                Data = null
+            });
         }
 
-        return Ok();
+        return Ok(new ResponseVM<AccountRole>
+        {
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Delete Success",
+            Data = null
+        });
     }
 }
-
+*/

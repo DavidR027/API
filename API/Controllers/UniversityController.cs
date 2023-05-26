@@ -1,21 +1,25 @@
 ﻿using API.Contracts;
 using API.Models;
 using API.Repositories;
+using API.ViewModels.Accounts;
+using API.ViewModels.Bookings;
 using API.ViewModels.Educations;
+using API.ViewModels.Others;
 using API.ViewModels.Universities;
 using Microsoft.AspNetCore.Mvc;
+using System.Net;
 
 namespace API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class UniversityController : ControllerBase
+public class UniversityController : BaseController<University, UniversityVM>
 {
     private readonly IUniversityRepository _universityRepository;
     private readonly IEducationRepository _educationRepository;
     private readonly IMapper<University, UniversityVM> _mapper;
     private readonly IMapper<Education, EducationVM> _educationVMMapper;
-    public UniversityController(IUniversityRepository universityRepository, IEducationRepository educationRepository, IMapper<University, UniversityVM> mapper, IMapper<Education, EducationVM> educationMapper)
+    public UniversityController(IUniversityRepository universityRepository, IEducationRepository educationRepository, IMapper<University, UniversityVM> mapper, IMapper<Education, EducationVM> educationMapper) : base(universityRepository, mapper)
     {
         _universityRepository = universityRepository;
         _educationRepository = educationRepository;
@@ -29,7 +33,13 @@ public class UniversityController : ControllerBase
         var universities = _universityRepository.GetAll();
         if (!universities.Any())
         {
-            return NotFound();
+            return NotFound(new ResponseVM<UniversityVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "University not found",
+                Data = null
+            });
         }
 
         var results = new List<UniversityEducationVM>();
@@ -49,10 +59,16 @@ public class UniversityController : ControllerBase
             results.Add(result);
         }
 
-        return Ok(results);
+        return Ok(new ResponseVM<List<UniversityEducationVM>>
+        {
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Success",
+            Data = results
+        });
     }
 
-    [HttpGet]
+/*    [HttpGet]
     public IActionResult GetAll()
     {
         var universities = _universityRepository.GetAll();
@@ -61,11 +77,11 @@ public class UniversityController : ControllerBase
             return NotFound();
         }
 
-        /*var univeritiesConverted = new List<UniversityVM>();
+        *//*var univeritiesConverted = new List<UniversityVM>();
         foreach (var university in universities) {
             var result = UniversityVM.ToVM(university);
             univeritiesConverted.Add(result);
-        }*/
+        }*//*
 
         var data = universities.Select(_mapper.Map).ToList();
 
@@ -124,5 +140,5 @@ public class UniversityController : ControllerBase
         }
 
         return Ok();
-    }
+    }*/
 }
