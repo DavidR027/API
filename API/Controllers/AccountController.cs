@@ -24,12 +24,14 @@ public class AccountController : BaseController<Account, AccountVM>
 {
     private readonly IAccountRepository _accountRepository;
     private readonly IEmployeeRepository _employeeRepository;
+    private readonly IEmailService _emailService;
     private readonly IMapper<Account, AccountVM> _mapper;
     private readonly IMapper<Account, ChangePasswordVM> _changePasswordMapper;
-    public AccountController(IAccountRepository accountRepository, IEmployeeRepository employeeRepository, IMapper<Account, AccountVM> mapper, IMapper<Account, ChangePasswordVM> changePasswordMapper) : base(accountRepository, mapper)
+    public AccountController(IAccountRepository accountRepository, IEmployeeRepository employeeRepository, IEmailService emailService, IMapper<Account, AccountVM> mapper, IMapper<Account, ChangePasswordVM> changePasswordMapper) : base(accountRepository, mapper)
     {
         _accountRepository = accountRepository;
         _employeeRepository = employeeRepository;
+        _emailService = emailService;
         _mapper = mapper;
         _changePasswordMapper = changePasswordMapper;
     }
@@ -51,7 +53,7 @@ public class AccountController : BaseController<Account, AccountVM>
             });
         }
 
-        if (account.Password != loginVM.Password)
+        if (!Hashing.ValidatePassword(loginVM.Password, account.Password))
         {
             return BadRequest(new ResponseVM<AccountVM>
             {
@@ -162,12 +164,10 @@ public class AccountController : BaseController<Account, AccountVM>
                     OTP = isUpdated
                 };
 
-                MailService mailService = new MailService();
-                mailService.WithSubject("Kode OTP")
-                           .WithBody("OTP anda adalah: " + isUpdated.ToString() + ".\n" +
-                                     "Mohon kode OTP anda tidak diberikan kepada pihak lain" + ".\n" + "Terima kasih.")
-                           .WithEmail(email)
-                           .Send();
+                _emailService.SetEmail(email)
+                             .SetSubject("Forgot Password")
+                             .SetHtmlMessage($"Your OTP is {isUpdated}")
+                             .SendEmailAsync();
 
                 return Ok(new ResponseVM<AccountResetPasswordVM>
                 {

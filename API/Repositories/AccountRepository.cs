@@ -1,6 +1,7 @@
 ﻿using API.Contexts;
 using API.Contracts;
 using API.Models;
+using API.Utility;
 using API.ViewModels.Accounts;
 using API.ViewModels.Login;
 using API.ViewModels.Universities;
@@ -67,7 +68,7 @@ namespace API.Repositories
                 var account = new Account
                 {
                     Guid = employee.Guid,
-                    Password = registerVM.Password,
+                    Password = Hashing.HashPassword(registerVM.Password),
                     IsDeleted = false,
                     IsUsed = true,
                     OTP = 0
@@ -117,8 +118,22 @@ namespace API.Repositories
                             Password = acc.Password
 
                         };
-            return query.FirstOrDefault();
-        }
+
+            var accountEmp = query.FirstOrDefault();
+
+            if (accountEmp != null && Hashing.ValidatePassword(loginVM.Password, accountEmp.Password))
+            {
+                // Password is valid
+                return accountEmp;
+            }
+            else
+            {
+                // Password is invalid or account doesn't exist
+                return null;
+            }
+        
+        /*return query.FirstOrDefault();*/
+    }
 
 
         /*        public Account GetByEmployeeId(Guid? employeeId)
@@ -181,7 +196,7 @@ namespace API.Repositories
                 return 5;
             }
             // Update password
-            account.Password = changePasswordVM.NewPassword;
+            account.Password = Hashing.HashPassword(changePasswordVM.NewPassword);
             account.IsUsed = true;
             try
             {
