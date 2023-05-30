@@ -14,6 +14,9 @@ using API.ViewModels.Universities;
 using API.ViewModels.Others;
 using System.Net.NetworkInformation;
 using API.ViewModels.AccountRoles;
+using System.Security.Claims;
+using System.Security.Principal;
+using Microsoft.AspNetCore.Authorization;
 
 namespace API.Controllers;
 
@@ -25,19 +28,23 @@ public class AccountController : BaseController<Account, AccountVM>
     private readonly IAccountRepository _accountRepository;
     private readonly IEmployeeRepository _employeeRepository;
     private readonly IEmailService _emailService;
+    private readonly ITokenService _tokenService;
     private readonly IMapper<Account, AccountVM> _mapper;
     private readonly IMapper<Account, ChangePasswordVM> _changePasswordMapper;
-    public AccountController(IAccountRepository accountRepository, IEmployeeRepository employeeRepository, IEmailService emailService, IMapper<Account, AccountVM> mapper, IMapper<Account, ChangePasswordVM> changePasswordMapper) : base(accountRepository, mapper)
+    public AccountController(IAccountRepository accountRepository, IEmployeeRepository employeeRepository, IEmailService emailService, ITokenService tokenService, IMapper<Account, AccountVM> mapper, IMapper<Account, ChangePasswordVM> changePasswordMapper) : base(accountRepository, mapper)
     {
         _accountRepository = accountRepository;
         _employeeRepository = employeeRepository;
+        _tokenService = tokenService;
         _emailService = emailService;
         _mapper = mapper;
         _changePasswordMapper = changePasswordMapper;
     }
 
+
     //kel 3
     [HttpPost("login")]
+    [AllowAnonymous]
     public IActionResult Login(LoginVM loginVM)
     {
         var account = _accountRepository.Login(loginVM);
@@ -64,12 +71,68 @@ public class AccountController : BaseController<Account, AccountVM>
             });
         }
 
-        return Ok(new ResponseVM<List<AccountVM>>
+        var employee = _accountRepository.GetEmployeeByEmail(account.Email);
+        if (employee == null)
+        {
+            return NotFound(new ResponseVM<AccountVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "Email not found",
+                Data = null
+            });
+        }
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, employee.NIK),
+            new(ClaimTypes.Name, $"{employee.FirstName} {employee.LastName}"),
+            new(ClaimTypes.Email, employee.Email)
+        };
+
+        var roles = _accountRepository.GetRoles(employee.Guid);
+
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        var token = _tokenService.GenerateToken(claims);
+
+        return Ok(new ResponseVM<string>
         {
             Code = StatusCodes.Status200OK,
             Status = HttpStatusCode.OK.ToString(),
             Message = "Login Success",
-            Data = null
+            Data = token
+        });
+
+    }
+
+
+    [HttpPost("ExtractToken/{token}")]
+    public IActionResult ExtractToken(string token)
+    {
+
+        var extract = _tokenService.ExtractClaimsFromJwt(token);
+
+        if (extract == null || extract.NameIdentifier == null)
+        {
+            return NotFound(new ResponseVM<ClaimVM>
+            {
+                Code = StatusCodes.Status404NotFound,
+                Status = HttpStatusCode.NotFound.ToString(),
+                Message = "Token not found",
+                Data = null
+            });
+        }
+
+        return Ok(new ResponseVM<ClaimVM>
+        {
+            Code = StatusCodes.Status200OK,
+            Status = HttpStatusCode.OK.ToString(),
+            Message = "Extract Success",
+            Data = extract
         });
 
     }
@@ -77,6 +140,7 @@ public class AccountController : BaseController<Account, AccountVM>
 
     //kel 2
     [HttpPost("Register")]
+    [AllowAnonymous]
     public IActionResult Register(RegisterVM registerVM)
     {
 
@@ -129,7 +193,8 @@ public class AccountController : BaseController<Account, AccountVM>
 
 
     //kel 5
-    [HttpPost("ForgotPassword"+"{email}")]
+    [HttpPost("ForgotPassword/{email}")]
+    [AllowAnonymous]
     public IActionResult UpdateResetPass(String email)
     {
 
@@ -173,7 +238,7 @@ public class AccountController : BaseController<Account, AccountVM>
                 {
                     Code = StatusCodes.Status200OK,
                     Status = HttpStatusCode.OK.ToString(),
-                    Message = "OTP Successfully Generated",
+                    Message = "OTP Successfully Sent to Email",
                     Data = hasil
                 });
 
@@ -184,6 +249,7 @@ public class AccountController : BaseController<Account, AccountVM>
 
     //kel 6
     [HttpPost("ChangePassword")]
+    [AllowAnonymous]
     public IActionResult ChangePassword(ChangePasswordVM changePasswordVM)
     {
         // Cek apakah email dan OTP valid

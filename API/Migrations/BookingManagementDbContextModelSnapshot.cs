@@ -264,6 +264,29 @@ namespace API.Migrations
                     b.HasKey("Guid");
 
                     b.ToTable("tb_m_roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Guid = new Guid("e6314770-b685-4d19-8d42-a205c3ffe512"),
+                            CreatedDate = new DateTime(2023, 5, 30, 11, 25, 49, 762, DateTimeKind.Local).AddTicks(3052),
+                            ModifiedDate = new DateTime(2023, 5, 30, 11, 25, 49, 762, DateTimeKind.Local).AddTicks(3070),
+                            Name = "User"
+                        },
+                        new
+                        {
+                            Guid = new Guid("77d1b64c-baf4-49ad-6481-08db60bf173e"),
+                            CreatedDate = new DateTime(2023, 5, 30, 11, 25, 49, 762, DateTimeKind.Local).AddTicks(3074),
+                            ModifiedDate = new DateTime(2023, 5, 30, 11, 25, 49, 762, DateTimeKind.Local).AddTicks(3075),
+                            Name = "Manager"
+                        },
+                        new
+                        {
+                            Guid = new Guid("3a2877dd-fa5e-47e9-6482-08db60bf173e"),
+                            CreatedDate = new DateTime(2023, 5, 30, 11, 25, 49, 762, DateTimeKind.Local).AddTicks(3078),
+                            ModifiedDate = new DateTime(2023, 5, 30, 11, 25, 49, 762, DateTimeKind.Local).AddTicks(3079),
+                            Name = "Admin"
+                        });
                 });
 
             modelBuilder.Entity("API.Models.Room", b =>
@@ -404,13 +427,11 @@ namespace API.Migrations
 
             modelBuilder.Entity("API.Models.Employee", b =>
                 {
-                    b.Navigation("Account")
-                        .IsRequired();
+                    b.Navigation("Account");
 
                     b.Navigation("Bookings");
 
-                    b.Navigation("Education")
-                        .IsRequired();
+                    b.Navigation("Education");
                 });
 
             modelBuilder.Entity("API.Models.Role", b =>

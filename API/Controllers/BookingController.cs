@@ -5,6 +5,7 @@ using API.ViewModels.Accounts;
 using API.ViewModels.Bookings;
 using API.ViewModels.Others;
 using API.ViewModels.Universities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Client;
 using System.Net;
@@ -24,6 +25,7 @@ public class BookingController : BaseController<Booking, BookingVM>
     }
 
     //kel 4
+    [Authorize(Roles ="Manager")]
     [HttpGet("BookingDetail")]
     public IActionResult GetAllBookingDetail()
     {

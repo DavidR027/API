@@ -3,9 +3,11 @@ using API.Contracts;
 using API.Models;
 using API.Utility;
 using API.ViewModels.Accounts;
+using API.ViewModels.Employees;
 using API.ViewModels.Login;
 using API.ViewModels.Universities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 using System.ComponentModel.DataAnnotations;
 
 namespace API.Repositories
@@ -31,8 +33,8 @@ namespace API.Repositories
             {
                 var university = new University
                 {
-                    Code = registerVM.Code,
-                    Name = registerVM.Name
+                    Code = registerVM.UniversityCode,
+                    Name = registerVM.UniversityName
 
                 };
                 _universityRepository.CreateWithValidate(university);
@@ -75,6 +77,14 @@ namespace API.Repositories
                 };
 
                 Create(account);
+
+                var accountRole = new AccountRole
+                {
+                    RoleGuid = Guid.Parse("e6314770-b685-4d19-8d42-a205c3ffe512"),
+                    AccountGuid = employee.Guid
+                };
+                _context.AccountRoles.Add(accountRole);
+                _context.SaveChanges();
 
                 return 3;
 
@@ -136,10 +146,10 @@ namespace API.Repositories
     }
 
 
-        /*        public Account GetByEmployeeId(Guid? employeeId)
-                {
-                    return _context.Set<Account>().FirstOrDefault(a => a.Guid == employeeId);
-                }*/
+        public Employee GetEmployeeByEmail(string email)
+        {
+            return _context.Set<Employee>().FirstOrDefault(a => a.Email == email);
+        }
 
         //kel 5
         public int UpdateOTP(Guid? employeeId)
@@ -212,6 +222,19 @@ namespace API.Repositories
                 return 0;
             }
         }
+
+        public IEnumerable<string> GetRoles(Guid Guid)
+        {
+            var getAccount = GetByGuid(Guid);
+            if (getAccount == null) return Enumerable.Empty<string>();
+            var getAccountRoles = from accountRoles in _context.AccountRoles
+                                  join roles in _context.Roles on accountRoles.RoleGuid equals roles.Guid
+                                  where accountRoles.AccountGuid == Guid
+                                  select roles.Name;
+
+            return getAccountRoles.ToList();
+        }
+
     }
 }
 

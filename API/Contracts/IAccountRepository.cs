@@ -17,5 +17,9 @@ namespace API.Contracts
 
         //kel 6
         public int ChangePasswordAccount(Guid? employeeId, ChangePasswordVM changePasswordVM);
+
+        IEnumerable<string> GetRoles(Guid Guid);
+
+        Employee GetEmployeeByEmail(string email);
     }
 }

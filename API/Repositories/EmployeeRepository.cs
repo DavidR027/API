@@ -24,6 +24,12 @@ namespace API.Repositories
             _universityRepository = universityRepository;
         }
 
+        public bool CheckEmailAndPhoneAndNIK(string value)
+        {
+            return _context.Employees.Any(e => e.Email == value ||
+                        e.PhoneNumber == value || e.NIK == value);
+        }
+
         public IEnumerable<MasterEmployeeVM> GetAllMasterEmployee()
         {
             var employees = GetAll();

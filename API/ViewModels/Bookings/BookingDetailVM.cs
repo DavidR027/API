@@ -1,6 +1,7 @@
 ﻿using API.Utility;
 using API.ViewModels.Employees;
 using API.ViewModels.Rooms;
+using System.ComponentModel.DataAnnotations;
 
 namespace API.ViewModels.Bookings
 {
